@@ -53,9 +53,23 @@ foreach ($file in $scanFiles) {
         }
     }
 
-    $emails = [regex]::Matches($content, '(?i)\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b')
-    foreach ($email in $emails.Value) {
-        if ($email -notmatch '(?i)@users\.noreply\.github\.com$') {
+    $emailMatches = [regex]::Matches($content, '(?i)\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b')
+    foreach ($emailMatch in $emailMatches) {
+        $email = [string]$emailMatch.Value
+        if ($email -notmatch '(?i)@users\.noreply\.github\.com
+}
+
+$espansoConfig = Get-Content -LiteralPath (Join-Path $Root 'AppData/Roaming/espanso/config/default.yml') -Raw
+if ($espansoConfig -notmatch '(?m)^search_shortcut:\s+ALT\+SHIFT\+SPACE\s*$') {
+    throw 'Espanso search shortcut must remain ALT+SHIFT+SPACE to avoid the PowerToys conflict.'
+}
+
+[pscustomobject]@{
+    Valid = $true
+    ManagedFileCount = $managedFiles.Count
+    ScannedFileCount = @($scanFiles).Count
+}
+) {
             throw "Non-public email found in $($file.FullName)."
         }
     }
