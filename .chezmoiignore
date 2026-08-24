@@ -1,6 +1,7 @@
 /README.md
 /LICENSE
 /.github/**
+/docs/**
 /scripts/**
 
 {{ if ne .chezmoi.os "windows" }}

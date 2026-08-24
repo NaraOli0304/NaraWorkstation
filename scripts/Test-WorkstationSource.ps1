@@ -13,11 +13,66 @@ $managedFiles = @(
     'AppData/Roaming/espanso/config/default.yml'
 )
 
+$allowedRootFiles = @(
+    '.chezmoiignore',
+    'dot_gitconfig',
+    'LICENSE',
+    'README.md'
+)
+
+$allowedRootDirectories = @(
+    '.git',
+    '.github',
+    'AppData',
+    'docs',
+    'scripts'
+)
+
+$unexpectedRootFiles = @(
+    Get-ChildItem -LiteralPath $Root -File -Force |
+        Where-Object Name -NotIn $allowedRootFiles
+)
+
+if ($unexpectedRootFiles.Count -gt 0) {
+    $names = $unexpectedRootFiles.Name -join ', '
+    throw "Unexpected root file could become managed by chezmoi: $names"
+}
+
+$unexpectedRootDirectories = @(
+    Get-ChildItem -LiteralPath $Root -Directory -Force |
+        Where-Object Name -NotIn $allowedRootDirectories
+)
+
+if ($unexpectedRootDirectories.Count -gt 0) {
+    $names = $unexpectedRootDirectories.Name -join ', '
+    throw "Unexpected root directory could become managed by chezmoi: $names"
+}
+
 foreach ($relativePath in $managedFiles) {
     $path = Join-Path $Root $relativePath
     if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
         throw "Required managed file is missing: $relativePath"
     }
+}
+
+$appDataRoot = Join-Path $Root 'AppData'
+$actualManagedFiles = @(
+    Get-ChildItem -LiteralPath $appDataRoot -Recurse -File |
+        ForEach-Object {
+            $_.FullName.Substring($Root.Length).TrimStart('\', '/') -replace '\\', '/'
+        }
+)
+
+$expectedAppDataFiles = @(
+    $managedFiles | Where-Object { $_ -like 'AppData/*' }
+)
+
+$unexpectedAppDataFiles = @(
+    $actualManagedFiles | Where-Object { $_ -notin $expectedAppDataFiles }
+)
+
+if ($unexpectedAppDataFiles.Count -gt 0) {
+    throw "Unexpected AppData file could become managed by chezmoi: $($unexpectedAppDataFiles -join ', ')"
 }
 
 $jsonFiles = @(
@@ -30,6 +85,26 @@ foreach ($relativePath in $jsonFiles) {
     Get-Content -LiteralPath $path -Raw |
         ConvertFrom-Json -Depth 100 |
         Out-Null
+}
+
+$parseErrors = @()
+$powerShellFiles = @(Get-ChildItem (Join-Path $Root 'scripts') -Filter '*.ps1' -File)
+
+foreach ($powerShellFile in $powerShellFiles) {
+    $tokens = $null
+    $errors = $null
+
+    [System.Management.Automation.Language.Parser]::ParseFile(
+        $powerShellFile.FullName,
+        [ref]$tokens,
+        [ref]$errors
+    ) | Out-Null
+
+    $parseErrors += @($errors)
+}
+
+if ($parseErrors.Count -gt 0) {
+    throw "PowerShell parser check failed: $($parseErrors.Message -join '; ')"
 }
 
 $scanFiles = @(
@@ -86,4 +161,5 @@ if ($espansoConfig -notmatch $shortcutPattern) {
     Valid = $true
     ManagedFileCount = $managedFiles.Count
     ScannedFileCount = $scanFiles.Count
+    PowerShellFileCount = $powerShellFiles.Count
 }
