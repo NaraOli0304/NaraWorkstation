@@ -36,6 +36,18 @@ See the [sanitized restore evidence](docs/restore-validation.md). Raw verbose lo
 
 The reusable validator is available at `scripts/Test-SandboxRestore.ps1`. GitHub-hosted CI validates its PowerShell syntax, while the actual Sandbox restore remains an explicit isolated Windows test because hosted runners do not provide nested Windows Sandbox execution.
 
+## Personal maintenance dashboard
+
+Run a read-only health audit and open the local HTML dashboard:
+
+```powershell
+pwsh ./scripts/Invoke-NaraMaintenance.ps1 -OpenReport
+```
+
+It checks application updates, the three personal repositories, GitHub Actions, chezmoi state, local validators, WSL and the latest OneDrive WSL backup. Reports are written locally to `Documents\NaraMaintenance`.
+
+Updates and WSL exports require explicit switches and a high-impact confirmation prompt. See the [maintenance guide](docs/maintenance.md).
+
 ## Install safely
 
 Install chezmoi:
