@@ -94,23 +94,24 @@ foreach ($powerShellFile in $powerShellFiles) {
     $tokens = $null
     $errors = $null
 
-    [System.Management.Automation.Language.Parser]::ParseFile(
+    $ast = [System.Management.Automation.Language.Parser]::ParseFile(
         $powerShellFile.FullName,
         [ref]$tokens,
         [ref]$errors
-    ) | Out-Null
+    )
 
     $parseErrors += @($errors)
 
     $functionDefinitions = @(
-        $tokens |
-            Where-Object Kind -eq 'Function' |
-            ForEach-Object Text
+        $ast.FindAll(
+            { param($node) $node -is [System.Management.Automation.Language.FunctionDefinitionAst] },
+            $true
+        )
     )
 
-    foreach ($functionName in $functionDefinitions) {
-        if (Get-Alias -Name $functionName -ErrorAction SilentlyContinue) {
-            throw "PowerShell function collides with an existing alias: $functionName"
+    foreach ($functionDefinition in $functionDefinitions) {
+        if (Get-Alias -Name $functionDefinition.Name -ErrorAction SilentlyContinue) {
+            throw "PowerShell function collides with an existing alias: $($functionDefinition.Name)"
         }
     }
 }
