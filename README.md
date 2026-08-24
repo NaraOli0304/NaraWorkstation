@@ -10,7 +10,8 @@ The repository captures a small, deliberate configuration surface instead of cop
 - Git identity and GitHub CLI credential helper configuration;
 - Visual Studio Code user settings;
 - Windows Terminal settings;
-- Espanso application settings.
+- Espanso application settings;
+- a PowerShell 7 profile exposing the audited maintenance command.
 
 Personal Espanso matches live separately in [NaraSnippets](https://github.com/NaraOli0304/NaraSnippets).
 
@@ -28,7 +29,7 @@ Personal Espanso matches live separately in [NaraSnippets](https://github.com/Na
 The configuration was restored successfully into a disposable Windows Sandbox with networking disabled:
 
 - dry run completed;
-- four approved files restored;
+- the approved workstation files restored;
 - final `chezmoi status` returned no differences;
 - bootstrap process returned exit code 0.
 
@@ -38,11 +39,20 @@ The reusable validator is available at `scripts/Test-SandboxRestore.ps1`. GitHub
 
 ## Personal maintenance dashboard
 
-Run a read-only health audit and open the local HTML dashboard:
+After applying the chezmoi source, run a read-only health audit from any PowerShell 7 directory:
 
 ```powershell
-pwsh ./scripts/Invoke-NaraMaintenance.ps1 -OpenReport
+nara-maintenance
 ```
+
+Optional explicit operations remain available:
+
+```powershell
+nara-maintenance -UpdateApplications
+nara-maintenance -BackupWSL
+```
+
+The repository script remains available directly as `scripts/Invoke-NaraMaintenance.ps1`.
 
 It checks application updates, the three personal repositories, GitHub Actions, chezmoi state, local validators, WSL and the latest OneDrive WSL backup. Reports are written locally to `Documents\NaraMaintenance`.
 
