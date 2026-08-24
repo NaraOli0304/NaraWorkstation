@@ -27,61 +27,63 @@ $jsonFiles = @(
 
 foreach ($relativePath in $jsonFiles) {
     $path = Join-Path $Root $relativePath
-    Get-Content -LiteralPath $path -Raw | ConvertFrom-Json -Depth 100 | Out-Null
+    Get-Content -LiteralPath $path -Raw |
+        ConvertFrom-Json -Depth 100 |
+        Out-Null
 }
 
-$scanFiles = Get-ChildItem -LiteralPath $Root -Recurse -File |
-    Where-Object {
-        $_.FullName -notmatch '[\\/]\.git[\\/]' -and
-        $_.Extension -notin @('.md', '.ps1')
-    }
+$scanFiles = @(
+    Get-ChildItem -LiteralPath $Root -Recurse -File |
+        Where-Object {
+            $_.FullName -notmatch '[\\/]\.git[\\/]' -and
+            $_.Extension -notin @('.md', '.ps1')
+        }
+)
 
 $checks = [ordered]@{
     'private key' = '-----BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY-----'
     'GitHub token' = '(?i)\bgh[pousr]_[A-Za-z0-9_]{30,}\b'
     'JWT-like token' = '\beyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{10,}\b'
-    'credential assignment' = '(?i)\b(client_secret|access_token|refresh_token|password|api[_-]?key)\b\s*[:=]\s*["'']?[^"''\s]{8,}'
+    'credential assignment' = '(?i)\b(client_secret|access_token|refresh_token|password|api[_-]?key)\b\s*[:=]\s*\S{8,}'
     'corporate identifier' = '(?i)\b(atento|coem)\.(com|br|net|local)\b'
     'machine-specific home path' = '(?i)\b[A-Z]:\\Users\\[^\\\s]+'
 }
 
 foreach ($file in $scanFiles) {
-    $content = Get-Content -LiteralPath $file.FullName -Raw
+    $fileContent = Get-Content -LiteralPath $file.FullName -Raw
+
     foreach ($check in $checks.GetEnumerator()) {
-        if ($content -match $check.Value) {
+        if ($fileContent -match $check.Value) {
             throw "Privacy check failed ($($check.Key)): $($file.FullName)"
         }
     }
 
-    $emailMatches = [regex]::Matches($content, '(?i)\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b')
+    $emailPattern = '(?i)\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b'
+    $emailMatches = [regex]::Matches($fileContent, $emailPattern)
+
     foreach ($emailMatch in $emailMatches) {
-        $email = [string]$emailMatch.Value
-        if ($email -notmatch '(?i)@users\.noreply\.github\.com
-}
+        $emailAddress = [string]$emailMatch.Value
+        $isPublicNoReply = $emailAddress.EndsWith(
+            '@users.noreply.github.com',
+            [System.StringComparison]::OrdinalIgnoreCase
+        )
 
-$espansoConfig = Get-Content -LiteralPath (Join-Path $Root 'AppData/Roaming/espanso/config/default.yml') -Raw
-if ($espansoConfig -notmatch '(?m)^search_shortcut:\s+ALT\+SHIFT\+SPACE\s*$') {
-    throw 'Espanso search shortcut must remain ALT+SHIFT+SPACE to avoid the PowerToys conflict.'
-}
-
-[pscustomobject]@{
-    Valid = $true
-    ManagedFileCount = $managedFiles.Count
-    ScannedFileCount = @($scanFiles).Count
-}
-) {
+        if (-not $isPublicNoReply) {
             throw "Non-public email found in $($file.FullName)."
         }
     }
 }
 
-$espansoConfig = Get-Content -LiteralPath (Join-Path $Root 'AppData/Roaming/espanso/config/default.yml') -Raw
-if ($espansoConfig -notmatch '(?m)^search_shortcut:\s+ALT\+SHIFT\+SPACE\s*$') {
+$espansoPath = Join-Path $Root 'AppData/Roaming/espanso/config/default.yml'
+$espansoConfig = Get-Content -LiteralPath $espansoPath -Raw
+$shortcutPattern = '(?m)^search_shortcut:\s+ALT\+SHIFT\+SPACE\s*$'
+
+if ($espansoConfig -notmatch $shortcutPattern) {
     throw 'Espanso search shortcut must remain ALT+SHIFT+SPACE to avoid the PowerToys conflict.'
 }
 
 [pscustomobject]@{
     Valid = $true
     ManagedFileCount = $managedFiles.Count
-    ScannedFileCount = @($scanFiles).Count
+    ScannedFileCount = $scanFiles.Count
 }
