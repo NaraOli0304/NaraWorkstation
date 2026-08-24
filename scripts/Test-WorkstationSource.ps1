@@ -10,7 +10,8 @@ $managedFiles = @(
     'dot_gitconfig',
     'AppData/Roaming/Code/User/settings.json',
     'AppData/Local/Packages/Microsoft.WindowsTerminal_8wekyb3d8bbwe/LocalState/settings.json',
-    'AppData/Roaming/espanso/config/default.yml'
+    'AppData/Roaming/espanso/config/default.yml',
+    'Documents/PowerShell/profile.ps1'
 )
 
 $allowedRootFiles = @(
@@ -24,6 +25,7 @@ $allowedRootDirectories = @(
     '.git',
     '.github',
     'AppData',
+    'Documents',
     'docs',
     'scripts'
 )
@@ -88,7 +90,10 @@ foreach ($relativePath in $jsonFiles) {
 }
 
 $parseErrors = @()
-$powerShellFiles = @(Get-ChildItem (Join-Path $Root 'scripts') -Filter '*.ps1' -File)
+$powerShellFiles = @(
+    Get-ChildItem -LiteralPath $Root -Recurse -Filter '*.ps1' -File |
+        Where-Object FullName -NotMatch '[\\/]\.git[\\/]'
+)
 
 foreach ($powerShellFile in $powerShellFiles) {
     $tokens = $null
