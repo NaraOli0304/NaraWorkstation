@@ -1,0 +1,8 @@
+﻿README.md
+LICENSE
+.github/
+scripts/
+
+{{ if ne .chezmoi.os "windows" }}
+*
+{{ end }}
