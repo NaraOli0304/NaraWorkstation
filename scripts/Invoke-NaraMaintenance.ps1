@@ -64,9 +64,19 @@ function Get-RepoHealth {
 }
 
 if ($UpdateApplications -and $PSCmdlet.ShouldProcess('supported WinGet packages', 'Install available updates')) {
-    & winget upgrade --all --source winget --accept-source-agreements --accept-package-agreements
-    $state = if ($LASTEXITCODE -eq 0) { 'OK' } else { 'WARN' }
-    Add-Check 'Applications' 'WinGet update operation' $state "Exit code: $LASTEXITCODE."
+    $updateOutput = @(
+        & winget upgrade --all --accept-source-agreements --accept-package-agreements 2>&1
+    )
+    $updateText = $updateOutput -join [Environment]::NewLine
+    $noMatchPattern = '(?i)(No installed package found|Nenhum pacote instalado encontrado)'
+
+    if ($LASTEXITCODE -ne 0) {
+        Add-Check 'Applications' 'WinGet update operation' 'WARN' "Exit code: $LASTEXITCODE."
+    } elseif ($updateText -match $noMatchPattern) {
+        Add-Check 'Applications' 'WinGet update operation' 'WARN' 'WinGet did not select any installed package.'
+    } else {
+        Add-Check 'Applications' 'WinGet update operation' 'OK' 'WinGet completed the update operation.'
+    }
 }
 
 $oneDrive = [Environment]::GetEnvironmentVariable('OneDrive','User')
