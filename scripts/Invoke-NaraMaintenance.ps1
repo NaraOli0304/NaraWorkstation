@@ -165,12 +165,12 @@ $jsonPath = Join-Path $ReportDirectory "maintenance-$stamp.json"
 $htmlPath = Join-Path $ReportDirectory "maintenance-$stamp.html"
 $summary | ConvertTo-Json -Depth 8 | Set-Content $jsonPath -Encoding UTF8
 
-function H([object]$Value) { [System.Net.WebUtility]::HtmlEncode([string]$Value) }
-$rows = foreach ($c in $checks) { "<tr><td>$(H $c.Area)</td><td>$(H $c.Check)</td><td class='$($c.Status.ToLower())'>$(H $c.Status)</td><td>$(H $c.Detail)</td></tr>" }
+function ConvertTo-HtmlSafe([object]$Value) { [System.Net.WebUtility]::HtmlEncode([string]$Value) }
+$rows = foreach ($c in $checks) { "<tr><td>$(ConvertTo-HtmlSafe $c.Area)</td><td>$(ConvertTo-HtmlSafe $c.Check)</td><td class='$($c.Status.ToLower())'>$(ConvertTo-HtmlSafe $c.Status)</td><td>$(ConvertTo-HtmlSafe $c.Detail)</td></tr>" }
 $html = @"
 <!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>Nara Maintenance</title>
 <style>body{font-family:Segoe UI;background:#071426;color:#eaf2ff;margin:0;padding:32px}main{max-width:1180px;margin:auto}.tag{color:#45d7ff;font-weight:700;letter-spacing:.16em}h1{font-size:42px}.cards{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin:28px 0}.card,section{background:#0d2037;border:1px solid #294663;border-radius:18px;padding:22px}.card b{display:block;font-size:42px}.ok{color:#52e58b}.warn{color:#ffc83d}.fail{color:#ff6b81}table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:13px;border-bottom:1px solid #294663}th{color:#9eb2cc}@media(max-width:720px){.cards{grid-template-columns:1fr}}</style></head>
-<body><main><div class="tag">NARA WORKSTATION</div><h1>Painel de manutenção</h1><p>$(H $summary.GeneratedAt) · $(H $summary.Computer)</p><div class="cards"><div class="card">Aprovados<b class="ok">$($summary.Ok)</b></div><div class="card">Atenção<b class="warn">$($summary.Warn)</b></div><div class="card">Falhas<b class="fail">$($summary.Fail)</b></div></div><section><table><thead><tr><th>Área</th><th>Verificação</th><th>Estado</th><th>Detalhe</th></tr></thead><tbody>$($rows -join [Environment]::NewLine)</tbody></table></section><p>Relatório local sem tokens ou conteúdo dos arquivos gerenciados.</p></main></body></html>
+<body><main><div class="tag">NARA WORKSTATION</div><h1>Painel de manutenção</h1><p>$(ConvertTo-HtmlSafe $summary.GeneratedAt) · $(ConvertTo-HtmlSafe $summary.Computer)</p><div class="cards"><div class="card">Aprovados<b class="ok">$($summary.Ok)</b></div><div class="card">Atenção<b class="warn">$($summary.Warn)</b></div><div class="card">Falhas<b class="fail">$($summary.Fail)</b></div></div><section><table><thead><tr><th>Área</th><th>Verificação</th><th>Estado</th><th>Detalhe</th></tr></thead><tbody>$($rows -join [Environment]::NewLine)</tbody></table></section><p>Relatório local sem tokens ou conteúdo dos arquivos gerenciados.</p></main></body></html>
 "@
 Set-Content $htmlPath $html -Encoding UTF8
 Write-Host "OK: $($summary.Ok) | Atenção: $($summary.Warn) | Falhas: $($summary.Fail)"
