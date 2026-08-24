@@ -101,6 +101,18 @@ foreach ($powerShellFile in $powerShellFiles) {
     ) | Out-Null
 
     $parseErrors += @($errors)
+
+    $functionDefinitions = @(
+        $tokens |
+            Where-Object Kind -eq 'Function' |
+            ForEach-Object Text
+    )
+
+    foreach ($functionName in $functionDefinitions) {
+        if (Get-Alias -Name $functionName -ErrorAction SilentlyContinue) {
+            throw "PowerShell function collides with an existing alias: $functionName"
+        }
+    }
 }
 
 if ($parseErrors.Count -gt 0) {
