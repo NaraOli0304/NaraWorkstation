@@ -73,7 +73,7 @@ if ($UpdateApplications -and $PSCmdlet.ShouldProcess('supported WinGet packages'
     if ($LASTEXITCODE -ne 0) {
         Add-Check 'Applications' 'WinGet update operation' 'WARN' "Exit code: $LASTEXITCODE."
     } elseif ($updateText -match $noMatchPattern) {
-        Add-Check 'Applications' 'WinGet update operation' 'WARN' 'WinGet did not select any installed package.'
+        Add-Check 'Applications' 'WinGet update operation' 'INFO' 'WinGet did not find an applicable package to update.'
     } else {
         Add-Check 'Applications' 'WinGet update operation' 'OK' 'WinGet completed the update operation.'
     }
@@ -143,7 +143,7 @@ if (Test-Path -LiteralPath $snippetsValidator) {
 if (Get-Command winget -ErrorAction SilentlyContinue) {
     $upgradeOutput = @(& winget upgrade --source winget --accept-source-agreements 2>&1)
     $upgradeText = $upgradeOutput -join [Environment]::NewLine
-    $none = '(?i)(No available upgrade|No newer package versions|Nenhuma atualiza|Não há atualiza)'
+    $none = '(?i)(No available upgrade|No newer package versions|No installed package found matching input criteria|Nenhum pacote instalado encontrado|Nenhuma atualiza|Não há atualiza)'
     if ($LASTEXITCODE -ne 0) { Add-Check 'Applications' 'Available updates' 'WARN' "Exit code: $LASTEXITCODE." }
     elseif ($upgradeText -match $none) { Add-Check 'Applications' 'Available updates' 'OK' 'No updates reported by WinGet.' }
     else { Add-Check 'Applications' 'Available updates' 'WARN' 'WinGet reports available updates.' }
