@@ -12,7 +12,7 @@ The default run:
 
 - verifies chezmoi state;
 - checks the three local Git working trees;
-- reads the latest GitHub Actions result for each repository;
+- reads the latest GitHub Actions run for each local repository's committed HEAD;
 - runs the NaraWorkstation and NaraSnippets validators;
 - checks WinGet for available application updates;
 - verifies the Ubuntu WSL registration;
@@ -20,6 +20,24 @@ The default run:
 - writes local JSON and HTML reports under `Documents\NaraMaintenance`.
 
 It does not install updates, modify repositories, or create a new backup.
+
+## Commit-specific CI results
+
+The CI row resolves the checkout's full HEAD SHA and filters `gh run list` by that commit. A run for another SHA is rejected. The row includes the local SHA and execution status/conclusion.
+
+- `OK`: the selected run completed successfully for that SHA.
+- `FAIL`: the selected run completed with failure, timeout, required action or startup failure.
+- `WARN`: the run is pending/running, cancelled/skipped/neutral, absent, or cannot be queried or validated.
+
+A missing run can mean the commit has not been pushed or no workflow ran for it; it is not a passing result. The audit does not fetch, push, rerun workflows or authenticate on your behalf.
+
+This remains a view of the latest run for the local commit, not an aggregate of every workflow, required PR check or approval. Uncommitted changes are reported separately and are not covered by that commit's CI result.
+
+Offline regression checks, with fictional Git/GitHub responses and no workstation actions:
+
+```powershell
+pwsh ./scripts/Test-NaraMaintenanceCi.ps1
+```
 
 ## Explicit maintenance actions
 
