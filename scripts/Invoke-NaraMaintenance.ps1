@@ -52,13 +52,44 @@ function Get-RepoHealth {
     }
 
     if ($GitHubAvailable) {
+        $head = $null
         try {
-            $json = & gh run list --repo $GitHubRepository --limit 1 --json conclusion,databaseId 2>$null
-            $run = @($json | ConvertFrom-Json)[0]
-            $state = if ($run.conclusion -eq 'success') { 'OK' } else { 'WARN' }
-            Add-Check 'GitHub CI' $Name $state "Latest run: $($run.conclusion); ID $($run.databaseId)."
+            $head = [string](& git -C $Path rev-parse --verify HEAD 2>$null)
+            $headExitCode = $LASTEXITCODE
+            if ($headExitCode -ne 0 -or $head -notmatch '^[a-fA-F0-9]{40}$') {
+                throw 'Unable to resolve the local commit SHA.'
+            }
+
+            $json = & gh run list --repo $GitHubRepository --commit $head --limit 1 --json 'conclusion,databaseId,status,headSha' 2>$null
+            $queryExitCode = $LASTEXITCODE
+            if ($queryExitCode -ne 0) { throw "GitHub CLI exit code $queryExitCode." }
+
+            $runs = @(($json -join [Environment]::NewLine) | ConvertFrom-Json)
+            if ($runs.Count -eq 0) {
+                Add-Check 'GitHub CI' $Name 'WARN' "No CI run was found for local commit $head."
+                return
+            }
+            $run = $runs[0]
+            if ($runs.Count -ne 1 -or $null -eq $run) { throw 'GitHub CLI returned an invalid run response.' }
+            foreach ($field in @('conclusion', 'databaseId', 'status', 'headSha')) {
+                if ($null -eq $run.PSObject.Properties[$field]) { throw 'GitHub CLI returned an invalid run response.' }
+            }
+            $runId = 0L
+            if ([string]::IsNullOrWhiteSpace([string]$run.status) -or
+                -not [long]::TryParse([string]$run.databaseId, [ref]$runId) -or $runId -le 0) {
+                throw 'GitHub CLI returned an invalid run response.'
+            }
+            if ([string]$run.headSha -ne $head) { throw 'The returned CI commit does not match the local commit.' }
+
+            $state = 'WARN'
+            if ([string]$run.status -eq 'completed') {
+                if ([string]$run.conclusion -eq 'success') { $state = 'OK' }
+                elseif ([string]$run.conclusion -in @('failure', 'timed_out', 'action_required', 'startup_failure')) { $state = 'FAIL' }
+            }
+            Add-Check 'GitHub CI' $Name $state "Local commit $head; latest run: $($run.status)/$($run.conclusion); ID $runId."
         } catch {
-            Add-Check 'GitHub CI' $Name 'WARN' $_.Exception.Message
+            $context = if ($head -match '^[a-fA-F0-9]{40}$') { "for local commit $head" } else { 'for the local commit' }
+            Add-Check 'GitHub CI' $Name 'WARN' "Unable to query CI $context. $($_.Exception.Message)"
         }
     }
 }
