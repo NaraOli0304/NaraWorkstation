@@ -21,3 +21,6 @@ jobs:
       - name: Audit managed source
         shell: pwsh
         run: ./scripts/Test-WorkstationSource.ps1 | Format-List
+      - name: Test commit-specific maintenance CI states
+        shell: pwsh
+        run: ./scripts/Test-NaraMaintenanceCi.ps1 | Format-List
